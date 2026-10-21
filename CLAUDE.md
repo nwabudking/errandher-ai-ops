@@ -55,10 +55,16 @@ recommendations). Phase 3 adds three more: `vendor-market-ops`
 messaging), `technology-security` (open fraud flags platform-wide, recent
 admin activity, flag dispositioning), and `people-admin-compliance`
 (expiring runner documents, admin role-change audit log, expiry
-reminders). All seven can only propose — approval and execution happen
-through the desktop app, never through an agent's own tool use. More
-departments are added only once these are proven out in real use, per
-`03-target-architecture-and-plan.md` in the main repo.
+reminders). Phase 4 completes all ten departments from the original
+plan: `marketing-growth` (referral performance, active banners, new
+banner proposals), `business-intelligence-quality` (platform snapshot,
+quality metrics — read-only, no propose tool), and
+`chief-ai-operating-officer` (the cross-department coordinator — every
+department's read tools, no propose or approval tool of its own). All
+propose-capable agents can only propose — approval and execution happen
+through the desktop app, never through an agent's own tool use. See
+`03-target-architecture-and-plan.md` in the main repo for the original
+phased plan.
 
 **Finance and Runner Management hold a stricter rule than Phase 1's
 departments:** there is no tool, anywhere in this workspace, that
@@ -81,6 +87,18 @@ holds the strictest rule of all**: there is no tool anywhere, not even a
 propose one, that grants, revokes, or changes an admin role or
 permission. That is the single highest-privilege action in the system
 and stays entirely human-only, start to finish.
+
+**Marketing & Growth's banner tool is double-gated**: an approved
+proposal creates a banner, but always inactive — a separate, human-only
+activation step from the existing admin banners page is what actually
+makes it visible to any user. **Business Intelligence & Quality has no
+propose tool at all** — a quality issue traced to a specific runner or
+vendor is that department's own proposal to file, not a second path
+under a different name. **The Chief AI Operating Officer has every
+department's read tools and nothing else** — no propose tool, no
+approval tool, for any department. It coordinates and briefs; it never
+acts, and its own agent file says so in the strongest terms in this
+workspace.
 
 ## Two separate credentials — don't conflate them
 

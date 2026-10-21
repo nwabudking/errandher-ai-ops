@@ -493,5 +493,105 @@ server.registerTool(
   },
 );
 
+server.registerTool(
+  'ai_ops_read_referral_summary',
+  {
+    title: 'Read referral program summary',
+    description: 'Reads referral-program totals (active codes, referrals, rewards paid) and the top 10 referrers by uses.',
+    inputSchema: {},
+  },
+  async () => {
+    try {
+      return textResult(await callAiOps('/api/ai-ops/marketing/referral-summary'));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.registerTool(
+  'ai_ops_read_active_banners',
+  {
+    title: 'Read active promo banners',
+    description: 'Lists promo banners currently live to users (active and within their date window).',
+    inputSchema: {},
+  },
+  async () => {
+    try {
+      return textResult(await callAiOps('/api/ai-ops/marketing/active-banners'));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.registerTool(
+  'ai_ops_propose_promo_banner',
+  {
+    title: 'Propose a promo banner',
+    description:
+      'Proposes a new promo banner. Does NOT create or show anything — only files a proposal. Even once a ' +
+      'human approves it, the banner is created INACTIVE; a human still has to activate it separately from ' +
+      'the admin banners page before any customer sees it.',
+    inputSchema: {
+      title: z.string().max(200).describe('Banner title.'),
+      subtitle: z.string().max(300).optional().describe('Banner subtitle.'),
+      cta_text: z.string().max(60).optional().describe('Call-to-action button text.'),
+      cta_action: z.enum(['new_order', 'wallet', 'orders', 'support']).optional().describe('Where the CTA button sends the user.'),
+      bg_color_start: z.string().max(10).describe('Gradient start hex color, e.g. "#f97316".'),
+      bg_color_end: z.string().max(10).describe('Gradient end hex color.'),
+      target: z.enum(['all', 'customers', 'runners', 'vendors']).describe('Who the banner is shown to.'),
+      starts_at: z.string().optional().describe('ISO date — when the banner should start showing, once activated.'),
+      ends_at: z.string().optional().describe('ISO date — when the banner should stop showing, once activated.'),
+      business_reason: z.string().describe('Why this banner is being proposed — required, shown to the human approving it.'),
+    },
+  },
+  async (args) => {
+    try {
+      return textResult(await callAiOps('/api/ai-ops/marketing/propose-banner', {
+        method: 'POST',
+        body: JSON.stringify(args),
+      }));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.registerTool(
+  'ai_ops_read_platform_snapshot',
+  {
+    title: 'Read platform snapshot',
+    description: 'Reads the same headline stats the admin dashboard shows on login — users, orders, revenue, pending queues.',
+    inputSchema: {},
+  },
+  async () => {
+    try {
+      return textResult(await callAiOps('/api/ai-ops/bi/platform-snapshot'));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.registerTool(
+  'ai_ops_read_quality_metrics',
+  {
+    title: 'Read quality metrics',
+    description: 'Reads rating/cancellation/dispute metrics for a trailing window — average runner rating, low-rating count, cancelled and disputed order counts.',
+    inputSchema: {
+      window_days: z.number().int().optional().describe('Trailing window size in days. Defaults to 30 if omitted.'),
+    },
+  },
+  async ({ window_days }) => {
+    try {
+      const qs = window_days ? `?window_days=${encodeURIComponent(window_days)}` : '';
+      return textResult(await callAiOps(`/api/ai-ops/bi/quality-metrics${qs}`));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
 const transport = new StdioServerTransport();
 await server.connect(transport);

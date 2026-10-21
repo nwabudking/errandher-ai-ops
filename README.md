@@ -9,7 +9,7 @@ Companion docs live in the main `errandher` repo at
 for the full design and phased rollout, `04-open-decisions.md` for what's
 been verified vs. still open.
 
-## What's here (Phase 1 + Phase 2 + Phase 3)
+## What's here (all 4 phases — all 10 departments)
 
 ```
 errandher-ai-ops/
@@ -21,7 +21,10 @@ errandher-ai-ops/
 │   ├── runner-management.md           ← flagged runners, strike recommendations
 │   ├── vendor-market-ops.md           ← vendor applications, out-of-stock products
 │   ├── technology-security.md         ← open fraud flags, admin activity, dispositions
-│   └── people-admin-compliance.md    ← expiring documents, role audit log
+│   ├── people-admin-compliance.md     ← expiring documents, role audit log
+│   ├── marketing-growth.md            ← referral performance, promo banners
+│   ├── business-intelligence-quality.md ← platform snapshot, quality metrics (read-only)
+│   └── chief-ai-operating-officer.md  ← cross-department briefing (read-only, every department)
 ├── .mcp.json                          ← tells Claude Code where the MCP server is
 ├── mcp-server/                        ← wraps the Laravel AI-Ops API as MCP tools
 │   ├── package.json
@@ -39,7 +42,7 @@ errandher-ai-ops/
 ```
 
 **The Laravel side (`errandher` repo) has been tested end-to-end against a
-real database for all three phases** — Phase 1: delayed-order detection,
+real database for all four phases** — Phase 1: delayed-order detection,
 proposing a case and a message, approving one and rejecting the other,
 confirmed exactly one ticket and one notification were created, confirmed
 idempotency on retry, confirmed the full audit trail. Phase 2: reconciliation
@@ -49,21 +52,32 @@ exactly the right rows via the real `FraudFlag`/`StrikeService` logic, retry
 confirmed idempotent. Phase 3: vendor/out-of-stock/fraud-flag/expiring-document
 read tools checked against real DB queries, proposing and approving a vendor
 message, a fraud-flag disposition, and an expiry reminder confirmed to create
-exactly the right notification/flag rows. Validation and cross-department
-ability checks confirmed throughout. That's real, not assumed.
+exactly the right notification/flag rows. Phase 4: referral-summary,
+active-banners, platform-snapshot, and quality-metrics read tools checked
+against real DB queries (and a real enum bug — `Referral.status` is
+`pending/qualified/rewarded/rejected`, not `pending/completed` — caught and
+fixed by testing, not guessed); proposing and approving a banner confirmed
+it's created but inactive, and confirmed it does NOT appear in
+active-banners afterward, proving the double-gate actually holds. Validation
+and cross-department ability checks confirmed throughout every phase. That's
+real, not assumed.
 
 **This repo's own pieces — the MCP server and the desktop app — have been
 syntax-checked and the MCP server has been started against a live Laravel
-server (all eighteen tools registered, connects cleanly), but the desktop
-app itself has not been run.** No Flutter SDK in this sandbox. Treat first
-`flutter run` on your machine as real testing, not a formality.
+server (all twenty-three tools registered, connects cleanly), but the
+desktop app itself has not been run.** No Flutter SDK in this sandbox.
+Treat first `flutter run` on your machine as real testing, not a formality.
 
 **Finance, Runner Management, and Vendor & Market Ops hold a stricter
 rule than Phase 1:** no tool here approves/rejects a withdrawal or
 suspends/bans a runner or vendor directly. **People/Admin/Compliance
 holds the strictest rule of all** — no tool anywhere, not even a
-propose one, changes an admin role or permission. See `CLAUDE.md` and
-each agent's own file for why.
+propose one, changes an admin role or permission. **Marketing's banner
+tool is double-gated** (created inactive, needs a separate human
+activation step), **Business Intelligence has no propose tool**, and
+**the Chief AI Operating Officer has read tools only, for every
+department, and nothing else.** See `CLAUDE.md` and each agent's own
+file for why.
 
 ## Two separate credentials — don't mix them up
 
@@ -83,7 +97,7 @@ In the `errandher` repo, wherever you run artisan against the real
 database:
 
 ```bash
-# The agents' token — covers everything all seven department agents use
+# The agents' token — covers everything all ten department agents use
 php artisan ai-ops:token:create "ai-ops-desktop-app" \
   --ability=ping \
   --ability=orders.read_delayed \
@@ -104,7 +118,12 @@ php artisan ai-ops:token:create "ai-ops-desktop-app" \
   --ability=security.propose_flag_disposition \
   --ability=compliance.read_expiring_documents \
   --ability=compliance.read_role_audit_log \
-  --ability=compliance.propose_expiry_reminder
+  --ability=compliance.propose_expiry_reminder \
+  --ability=marketing.read_referral_summary \
+  --ability=marketing.read_active_banners \
+  --ability=marketing.propose_banner \
+  --ability=bi.read_platform_snapshot \
+  --ability=bi.read_quality_metrics
 
 # The desktop app's own token — approval authority, nothing else
 php artisan ai-ops:token:create "desktop-app" --ability=proposed-actions.manage
@@ -180,6 +199,20 @@ flutter run -d windows   # or macos / linux
     --agent people-admin-compliance \
     --allowedTools "mcp__errandher-ai-ops__ai_ops_read_expiring_documents,mcp__errandher-ai-ops__ai_ops_read_role_audit_log,mcp__errandher-ai-ops__ai_ops_propose_expiry_reminder" \
     --permission-prompts none --model sonnet --output-format json
+
+  claude -p "Check referral performance and active banners." \
+    --agent marketing-growth \
+    --allowedTools "mcp__errandher-ai-ops__ai_ops_read_referral_summary,mcp__errandher-ai-ops__ai_ops_read_active_banners,mcp__errandher-ai-ops__ai_ops_propose_promo_banner" \
+    --permission-prompts none --model sonnet --output-format json
+
+  claude -p "Give me the platform snapshot and quality metrics." \
+    --agent business-intelligence-quality \
+    --allowedTools "mcp__errandher-ai-ops__ai_ops_read_platform_snapshot,mcp__errandher-ai-ops__ai_ops_read_quality_metrics" \
+    --permission-prompts none --model sonnet --output-format json
+
+  claude -p "Give me today's full executive briefing across every department." \
+    --agent chief-ai-operating-officer \
+    --permission-prompts none --model sonnet --output-format json
   ```
   Then switch to the Approvals tab and click Refresh — any proposal it
   filed should appear, with Approve/Reject buttons. Approving executes
@@ -193,9 +226,9 @@ debugging.
 
 ## What's deliberately not here yet
 
-Three more department agents (Marketing/Growth, Business Intelligence/
-Quality, and the Chief AI Operating Officer coordinator), in-app
-scheduling (recurring checks without manually running `claude` each
-time), deep-links into the existing admin dashboards. All specced in the
-main repo's planning docs, built phase by phase once each one is proven
-out for real.
+All ten departments from the original plan now have real, tested tools.
+What's still not here: in-app scheduling (recurring checks without
+manually running `claude` each time) and deep-links into the existing
+admin dashboards — both specced in the main repo's planning docs, not
+yet built. No new departments are planned beyond the original ten
+without a new decision to expand scope.
