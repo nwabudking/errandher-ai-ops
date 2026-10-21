@@ -62,11 +62,36 @@ active-banners afterward, proving the double-gate actually holds. Validation
 and cross-department ability checks confirmed throughout every phase. That's
 real, not assumed.
 
-**This repo's own pieces — the MCP server and the desktop app — have been
-syntax-checked and the MCP server has been started against a live Laravel
-server (all twenty-three tools registered, connects cleanly), but the
-desktop app itself has not been run.** No Flutter SDK in this sandbox.
-Treat first `flutter run` on your machine as real testing, not a formality.
+**Full end-to-end verification pass (2026-10-21), on a fresh database, not
+reused test data**: a real MCP client (the same SDK Claude Code itself
+uses) connected over the actual MCP protocol — not just "the process
+starts" — listed all 25 registered tools, then called `ai_ops_ping`,
+`ai_ops_read_delayed_orders`, `ai_ops_read_platform_snapshot`, and
+`ai_ops_propose_vendor_message` for real against a live Laravel server,
+and the resulting proposal was confirmed in the database. Separately over
+plain HTTP: all 16 read endpoints returned real data; all 8 propose→approve
+flows were run end-to-end and every single resulting database row (two
+support tickets, three notifications, two fraud flags, a runner strike, an
+inactive promo banner) was checked directly against what each API response
+claimed — exact match, every time; a reject flow and idempotent retries
+(re-reject, re-approve) were confirmed to no-op correctly; a full negative
+sweep confirmed a narrowly-scoped token gets 403 on all 24 endpoints
+outside its one granted ability; and the `ai_action_logs` audit trail was
+confirmed to have exactly one row per real action taken (idempotent no-ops
+correctly skip logging, by design). The existing (non-AI-ops) Laravel test
+suite was also run in full post-refactor: all 92 admin-dashboard smoke
+tests pass (including the exact `admin/ledger`, `admin/fraud`,
+`admin/withdrawals`, and dashboard routes this work refactored), and the
+only 17 pre-existing failures elsewhere in the suite are unrelated
+Mapbox-geocoding tests that need real network access/API keys this sandbox
+doesn't have — confirmed via `git log` that no AI-ops commit ever touched
+those files.
+
+**The MCP server and the desktop app are this repo's own pieces.** The MCP
+server is now proven at the protocol level, not just "starts without
+crashing." The desktop app itself still has not been run — no Flutter SDK
+in this sandbox. Treat first `flutter run` on your machine as real
+testing, not a formality.
 
 **Finance, Runner Management, and Vendor & Market Ops hold a stricter
 rule than Phase 1:** no tool here approves/rejects a withdrawal or
