@@ -1,0 +1,4 @@
+{
+  "baseUrl": "https://errandher.ng",
+  "approvalToken": "paste the token from: php artisan ai-ops:token:create \"desktop-app\" --ability=proposed-actions.manage"
+}

@@ -1,11 +1,11 @@
 name: errandher_ai_ops_desktop
 description: >
   ErrandHer AI Operating System — founder's desktop command centre.
-  Phase 0: proves the round trip (button -> shell out to Claude Code ->
-  MCP tool call -> Laravel AI-Ops API -> result shown here) before any
-  real department tooling is added.
+  Phase 1: a Ping Check tab (the Phase 0 round-trip proof) and an
+  Approvals tab — list, approve, and reject AI-proposed actions directly
+  against the Laravel AI-Ops API, no Claude Code involved in that path.
 publish_to: 'none'
-version: 0.1.0+1
+version: 0.2.0+1
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -14,6 +14,7 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
+  http: ^1.2.0
 
 dev_dependencies:
   flutter_test:

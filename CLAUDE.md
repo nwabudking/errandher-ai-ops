@@ -45,6 +45,21 @@ them call ErrandHer's AI-Ops API.
    confirm this" is always better than a confident guess.
 
 See `.claude/agents/` for the specific department agents and their scoped
-tool access. Phase 0 has exactly one, `operations-dispatch`, as the proof
-of the whole pipeline — more are added only once this one is proven out in
-real use.
+tool access. Phase 1 has two: `operations-dispatch` (delayed-order
+monitoring, runner availability) and `customer-experience` (open support
+cases, customer messaging). Both can only propose — approval and
+execution happen through the desktop app, never through an agent's own
+tool use. More departments are added only once these are proven out in
+real use, per `03-target-architecture-and-plan.md` in the main repo.
+
+## Two separate credentials — don't conflate them
+
+- **The MCP server's token** (`mcp-server/.env`'s `AI_OPS_TOKEN`) grants
+  the *agents'* abilities — read and propose tools only. It can never
+  approve anything, even if an agent tried to call an approval endpoint
+  directly — no such tool exists in this MCP server on purpose.
+- **The desktop app's own token** grants `proposed-actions.manage` —
+  listing, approving, and rejecting. This is the founder's own authority,
+  wielded by clicking a button, never by an agent. Keep these as two
+  separate tokens minted with separate `--ability` flags; don't give the
+  agent token approval rights "to save a step."
