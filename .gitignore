@@ -1,0 +1,19 @@
+# Never commit real credentials
+mcp-server/.env
+
+# Node
+mcp-server/node_modules/
+npm-debug.log*
+
+# Flutter
+desktop-app/.dart_tool/
+desktop-app/build/
+desktop-app/.flutter-plugins
+desktop-app/.flutter-plugins-dependencies
+desktop-app/windows/flutter/ephemeral/
+desktop-app/linux/flutter/ephemeral/
+desktop-app/macos/Flutter/ephemeral/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "errandher-ai-ops": {
+      "command": "node",
+      "args": ["mcp-server/src/index.js"]
+    }
+  }
+}
