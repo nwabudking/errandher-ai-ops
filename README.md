@@ -9,7 +9,7 @@ Companion docs live in the main `errandher` repo at
 for the full design and phased rollout, `04-open-decisions.md` for what's
 been verified vs. still open.
 
-## What's here (Phase 1 + Phase 2)
+## What's here (Phase 1 + Phase 2 + Phase 3)
 
 ```
 errandher-ai-ops/
@@ -18,7 +18,10 @@ errandher-ai-ops/
 │   ├── operations-dispatch.md         ← delayed orders, runner availability
 │   ├── customer-experience.md         ← open support cases, customer messaging
 │   ├── finance-reconciliation.md      ← reconciliation summary, pending withdrawals, fraud flags
-│   └── runner-management.md          ← flagged runners, strike recommendations
+│   ├── runner-management.md           ← flagged runners, strike recommendations
+│   ├── vendor-market-ops.md           ← vendor applications, out-of-stock products
+│   ├── technology-security.md         ← open fraud flags, admin activity, dispositions
+│   └── people-admin-compliance.md    ← expiring documents, role audit log
 ├── .mcp.json                          ← tells Claude Code where the MCP server is
 ├── mcp-server/                        ← wraps the Laravel AI-Ops API as MCP tools
 │   ├── package.json
@@ -36,25 +39,31 @@ errandher-ai-ops/
 ```
 
 **The Laravel side (`errandher` repo) has been tested end-to-end against a
-real database for both phases** — Phase 1: delayed-order detection,
+real database for all three phases** — Phase 1: delayed-order detection,
 proposing a case and a message, approving one and rejecting the other,
 confirmed exactly one ticket and one notification were created, confirmed
 idempotency on retry, confirmed the full audit trail. Phase 2: reconciliation
 summary and pending-withdrawals read tools checked against real DB queries,
 proposing and approving a fraud flag and a runner strike confirmed to create
 exactly the right rows via the real `FraudFlag`/`StrikeService` logic, retry
-confirmed idempotent, validation and ability checks confirmed. That's real,
-not assumed.
+confirmed idempotent. Phase 3: vendor/out-of-stock/fraud-flag/expiring-document
+read tools checked against real DB queries, proposing and approving a vendor
+message, a fraud-flag disposition, and an expiry reminder confirmed to create
+exactly the right notification/flag rows. Validation and cross-department
+ability checks confirmed throughout. That's real, not assumed.
 
 **This repo's own pieces — the MCP server and the desktop app — have been
 syntax-checked and the MCP server has been started against a live Laravel
-server (all nine tools registered, connects cleanly), but the desktop app
-itself has not been run.** No Flutter SDK in this sandbox. Treat first
+server (all eighteen tools registered, connects cleanly), but the desktop
+app itself has not been run.** No Flutter SDK in this sandbox. Treat first
 `flutter run` on your machine as real testing, not a formality.
 
-**Finance and Runner Management hold a stricter rule than Phase 1:** no
-tool here approves/rejects a withdrawal or suspends/bans a runner
-directly — see `CLAUDE.md` and each agent's own file for why.
+**Finance, Runner Management, and Vendor & Market Ops hold a stricter
+rule than Phase 1:** no tool here approves/rejects a withdrawal or
+suspends/bans a runner or vendor directly. **People/Admin/Compliance
+holds the strictest rule of all** — no tool anywhere, not even a
+propose one, changes an admin role or permission. See `CLAUDE.md` and
+each agent's own file for why.
 
 ## Two separate credentials — don't mix them up
 
@@ -74,7 +83,7 @@ In the `errandher` repo, wherever you run artisan against the real
 database:
 
 ```bash
-# The agents' token — covers everything all four department agents use
+# The agents' token — covers everything all seven department agents use
 php artisan ai-ops:token:create "ai-ops-desktop-app" \
   --ability=ping \
   --ability=orders.read_delayed \
@@ -86,7 +95,16 @@ php artisan ai-ops:token:create "ai-ops-desktop-app" \
   --ability=finance.read_pending_withdrawals \
   --ability=finance.propose_flag \
   --ability=runners.read_flagged \
-  --ability=runners.propose_strike
+  --ability=runners.propose_strike \
+  --ability=vendors.read_pending \
+  --ability=vendors.read_stock_issues \
+  --ability=vendors.propose_message \
+  --ability=security.read_fraud_flags \
+  --ability=security.read_admin_activity \
+  --ability=security.propose_flag_disposition \
+  --ability=compliance.read_expiring_documents \
+  --ability=compliance.read_role_audit_log \
+  --ability=compliance.propose_expiry_reminder
 
 # The desktop app's own token — approval authority, nothing else
 php artisan ai-ops:token:create "desktop-app" --ability=proposed-actions.manage
@@ -147,6 +165,21 @@ flutter run -d windows   # or macos / linux
     --agent runner-management \
     --allowedTools "mcp__errandher-ai-ops__ai_ops_read_flagged_runners,mcp__errandher-ai-ops__ai_ops_propose_runner_strike" \
     --permission-prompts none --model sonnet --output-format json
+
+  claude -p "Check vendor applications and out-of-stock products." \
+    --agent vendor-market-ops \
+    --allowedTools "mcp__errandher-ai-ops__ai_ops_read_vendors_pending_review,mcp__errandher-ai-ops__ai_ops_read_out_of_stock_products,mcp__errandher-ai-ops__ai_ops_propose_vendor_message" \
+    --permission-prompts none --model sonnet --output-format json
+
+  claude -p "Review open fraud flags and recent admin activity." \
+    --agent technology-security \
+    --allowedTools "mcp__errandher-ai-ops__ai_ops_read_open_fraud_flags,mcp__errandher-ai-ops__ai_ops_read_recent_admin_activity,mcp__errandher-ai-ops__ai_ops_propose_fraud_flag_disposition" \
+    --permission-prompts none --model sonnet --output-format json
+
+  claude -p "Check for runners with documents expiring soon." \
+    --agent people-admin-compliance \
+    --allowedTools "mcp__errandher-ai-ops__ai_ops_read_expiring_documents,mcp__errandher-ai-ops__ai_ops_read_role_audit_log,mcp__errandher-ai-ops__ai_ops_propose_expiry_reminder" \
+    --permission-prompts none --model sonnet --output-format json
   ```
   Then switch to the Approvals tab and click Refresh — any proposal it
   filed should appear, with Approve/Reject buttons. Approving executes
@@ -160,10 +193,9 @@ debugging.
 
 ## What's deliberately not here yet
 
-Six more department agents (Vendor/Market Ops, Technology/Security,
-People/Admin/Compliance, Marketing/Growth, Business Intelligence/Quality,
-and the Chief AI Operating Officer coordinator), in-app scheduling
-(recurring checks without manually running `claude` each time),
-deep-links into the existing admin dashboards. All specced in the main
-repo's planning docs, built phase by phase once each one is proven out
-for real.
+Three more department agents (Marketing/Growth, Business Intelligence/
+Quality, and the Chief AI Operating Officer coordinator), in-app
+scheduling (recurring checks without manually running `claude` each
+time), deep-links into the existing admin dashboards. All specced in the
+main repo's planning docs, built phase by phase once each one is proven
+out for real.

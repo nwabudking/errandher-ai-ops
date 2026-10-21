@@ -50,10 +50,15 @@ monitoring, runner availability) and `customer-experience` (open support
 cases, customer messaging). Phase 2 adds two more: `finance-reconciliation`
 (reconciliation summaries, pending withdrawals, fraud/anomaly flagging)
 and `runner-management` (flagged/suspended/banned runners, strike
-recommendations). All four can only propose — approval and execution
-happen through the desktop app, never through an agent's own tool use.
-More departments are added only once these are proven out in real use,
-per `03-target-architecture-and-plan.md` in the main repo.
+recommendations). Phase 3 adds three more: `vendor-market-ops`
+(vendor applications pending review, out-of-stock products, vendor
+messaging), `technology-security` (open fraud flags platform-wide, recent
+admin activity, flag dispositioning), and `people-admin-compliance`
+(expiring runner documents, admin role-change audit log, expiry
+reminders). All seven can only propose — approval and execution happen
+through the desktop app, never through an agent's own tool use. More
+departments are added only once these are proven out in real use, per
+`03-target-architecture-and-plan.md` in the main repo.
 
 **Finance and Runner Management hold a stricter rule than Phase 1's
 departments:** there is no tool, anywhere in this workspace, that
@@ -65,6 +70,17 @@ but approval there triggers the existing, escalating strike system
 (warning → 7-day suspension → permanent ban), so it's held to a higher
 bar than a support ticket or a customer notification. See each agent's
 own file for specifics.
+
+**Vendor & Market Ops carries the same account-status rule**: no tool
+approves, rejects, or suspends a vendor — that stays in the existing
+admin dashboard, same reasoning as Runner Management. **Technology &
+Security's disposition tool only relabels a fraud flag** — it never
+bans, suspends, or moves money by itself; any punitive follow-up is a
+separate, already-guarded action elsewhere. **People/Admin/Compliance
+holds the strictest rule of all**: there is no tool anywhere, not even a
+propose one, that grants, revokes, or changes an admin role or
+permission. That is the single highest-privilege action in the system
+and stays entirely human-only, start to finish.
 
 ## Two separate credentials — don't conflate them
 

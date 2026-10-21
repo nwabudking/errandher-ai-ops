@@ -315,5 +315,183 @@ server.registerTool(
   },
 );
 
+server.registerTool(
+  'ai_ops_read_vendors_pending_review',
+  {
+    title: 'Read vendors pending review',
+    description: 'Lists vendor applications currently pending or under review, most recent first.',
+    inputSchema: {},
+  },
+  async () => {
+    try {
+      return textResult(await callAiOps('/api/ai-ops/vendors/pending-review'));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.registerTool(
+  'ai_ops_read_out_of_stock_products',
+  {
+    title: 'Read out-of-stock products still marked available',
+    description:
+      'Lists products a vendor tracks stock for that have hit zero but are still marked available — a real ' +
+      'inconsistency a vendor may not have noticed, not an invented signal.',
+    inputSchema: {},
+  },
+  async () => {
+    try {
+      return textResult(await callAiOps('/api/ai-ops/vendors/out-of-stock-products'));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.registerTool(
+  'ai_ops_propose_vendor_message',
+  {
+    title: 'Propose a vendor message',
+    description:
+      'Proposes an in-app notification to a vendor. Does NOT send anything — only files a proposal that a ' +
+      'human must approve via the desktop app before it actually goes out.',
+    inputSchema: {
+      vendor_id: z.number().int().describe('The vendor this message is about.'),
+      title: z.string().max(255).describe('Notification title.'),
+      body: z.string().max(1000).describe('Notification body — the actual message text the vendor sees.'),
+      business_reason: z.string().describe('Why this message is being proposed — required, shown to the human approving it.'),
+    },
+  },
+  async (args) => {
+    try {
+      return textResult(await callAiOps('/api/ai-ops/vendors/propose-message', {
+        method: 'POST',
+        body: JSON.stringify(args),
+      }));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.registerTool(
+  'ai_ops_read_open_fraud_flags',
+  {
+    title: 'Read open fraud flags',
+    description: 'Lists open fraud/anomaly flags across the whole platform, most severe first, plus open/high/today/actioned counts.',
+    inputSchema: {},
+  },
+  async () => {
+    try {
+      return textResult(await callAiOps('/api/ai-ops/security/open-fraud-flags'));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.registerTool(
+  'ai_ops_read_recent_admin_activity',
+  {
+    title: 'Read recent admin activity',
+    description: 'Lists the most recent admin actions logged on the platform — for spotting unusual admin behaviour.',
+    inputSchema: {},
+  },
+  async () => {
+    try {
+      return textResult(await callAiOps('/api/ai-ops/security/recent-admin-activity'));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.registerTool(
+  'ai_ops_propose_fraud_flag_disposition',
+  {
+    title: 'Propose a fraud flag disposition',
+    description:
+      'Proposes relabeling an open fraud flag as reviewed, dismissed, or actioned. Does NOT change anything — ' +
+      'only files a proposal a human must approve. This only relabels the flag itself; it never bans, ' +
+      'suspends, or moves money — any follow-up punitive action needs its own separate proposal.',
+    inputSchema: {
+      flag_id: z.number().int().describe('The fraud flag this disposition is about.'),
+      disposition: z.enum(['reviewed', 'dismissed', 'actioned']).describe('The new status for this flag.'),
+      business_reason: z.string().describe('Why this disposition is being proposed — required, shown to the human approving it.'),
+    },
+  },
+  async (args) => {
+    try {
+      return textResult(await callAiOps('/api/ai-ops/security/propose-flag-disposition', {
+        method: 'POST',
+        body: JSON.stringify(args),
+      }));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.registerTool(
+  'ai_ops_read_expiring_documents',
+  {
+    title: 'Read runners with expiring identity documents',
+    description: 'Lists approved runners whose government ID or NIN expiry date falls within the given window.',
+    inputSchema: {
+      within_days: z.number().int().optional().describe('Window size in days. Defaults to 30 if omitted.'),
+    },
+  },
+  async ({ within_days }) => {
+    try {
+      const qs = within_days ? `?within_days=${encodeURIComponent(within_days)}` : '';
+      return textResult(await callAiOps(`/api/ai-ops/compliance/expiring-documents${qs}`));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.registerTool(
+  'ai_ops_read_role_audit_log',
+  {
+    title: 'Read admin role audit log',
+    description: 'Lists recent admin role grants/revocations — who changed what role for whom.',
+    inputSchema: {},
+  },
+  async () => {
+    try {
+      return textResult(await callAiOps('/api/ai-ops/compliance/role-audit-log'));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.registerTool(
+  'ai_ops_propose_expiry_reminder',
+  {
+    title: 'Propose a document-expiry reminder',
+    description:
+      'Proposes an in-app reminder to a runner about an expiring identity document. Does NOT send anything — ' +
+      'only files a proposal that a human must approve via the desktop app before it actually goes out.',
+    inputSchema: {
+      runner_id: z.number().int().describe('The runner this reminder is about.'),
+      body: z.string().max(1000).optional().describe('Custom reminder text. A sensible default is used if omitted.'),
+      business_reason: z.string().describe('Why this reminder is being proposed — required, shown to the human approving it.'),
+    },
+  },
+  async (args) => {
+    try {
+      return textResult(await callAiOps('/api/ai-ops/compliance/propose-expiry-reminder', {
+        method: 'POST',
+        body: JSON.stringify(args),
+      }));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
 const transport = new StdioServerTransport();
 await server.connect(transport);
