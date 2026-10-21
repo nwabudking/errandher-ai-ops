@@ -6,16 +6,19 @@
 // AI-Ops credential (AI_OPS_TOKEN) — the desktop app and the agent's
 // own prompt never see it.
 //
-// Phase 0 (ping) is proven end-to-end against a real database and live
-// HTTP server. Phase 1's five tools below are the same — tested for real,
-// not just written, including a real bug (SupportTicket's priority enum)
-// caught and fixed during that testing. This file itself has still not
-// been run — no Node runtime in the sandbox that wrote it was ever wired
-// to a live Laravel server. First real test happens on your machine.
+// Phase 0 (ping), Phase 1 (dispatch/support/customer), and Phase 2
+// (finance/runner tools below) are all proven end-to-end against a real
+// database and live HTTP server, including the executors each propose
+// tool triggers on approval — tested for real, not just written. This
+// file's own Node process has been started and connected its stdio
+// transport without error, but has not yet been driven by a real Claude
+// Code session on your machine — that's still the first real test.
 //
-// Deliberately NOT here: approve/reject for proposed actions. Those are
-// desktop-app-only, called directly against the Laravel API — an agent
-// must never be able to approve its own proposal.
+// Deliberately NOT here: approve/reject for proposed actions (desktop-app
+// -only — an agent must never approve its own proposal), and no
+// withdrawal approve/reject tool at all — money movement stays behind the
+// existing admin dashboard, never something a propose-and-click flow
+// executes. See FinanceController's class comment in the main repo.
 //
 // Config (environment variables, set in .env — see .env.example):
 //   AI_OPS_BASE_URL   e.g. https://errandher.ng  (or your local dev URL)
@@ -186,6 +189,123 @@ server.registerTool(
   async (args) => {
     try {
       return textResult(await callAiOps('/api/ai-ops/customer/propose-message', {
+        method: 'POST',
+        body: JSON.stringify(args),
+      }));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.registerTool(
+  'ai_ops_read_reconciliation_summary',
+  {
+    title: 'Read finance reconciliation summary',
+    description:
+      'Reads revenue/commission/service-charge/refund totals for a date range — the same numbers the ' +
+      'admin ledger dashboard shows, computed the same way.',
+    inputSchema: {
+      range: z.enum(['today', 'yesterday', 'week', 'month']).optional()
+        .describe('Defaults to "today" if omitted. Ignored if date_from/date_to are given.'),
+      date_from: z.string().optional().describe('YYYY-MM-DD — overrides range if given.'),
+      date_to: z.string().optional().describe('YYYY-MM-DD — overrides range if given.'),
+    },
+  },
+  async ({ range, date_from, date_to }) => {
+    try {
+      const params = new URLSearchParams();
+      if (range) params.set('range', range);
+      if (date_from) params.set('date_from', date_from);
+      if (date_to) params.set('date_to', date_to);
+      const qs = params.toString() ? `?${params.toString()}` : '';
+      return textResult(await callAiOps(`/api/ai-ops/finance/reconciliation-summary${qs}`));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.registerTool(
+  'ai_ops_read_pending_withdrawals',
+  {
+    title: 'Read pending withdrawals',
+    description: 'Lists withdrawal requests awaiting approval, oldest first, plus pending/approved/paid-out totals.',
+    inputSchema: {},
+  },
+  async () => {
+    try {
+      return textResult(await callAiOps('/api/ai-ops/finance/pending-withdrawals'));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.registerTool(
+  'ai_ops_propose_fraud_flag',
+  {
+    title: 'Propose a fraud/anomaly flag',
+    description:
+      'Proposes flagging a user for fraud/anomaly review. Does NOT touch any wallet, withdrawal, or order — ' +
+      'only files a flag a human must approve via the desktop app. Never a substitute for approving or ' +
+      'rejecting a withdrawal yourself; that stays in the existing admin dashboard.',
+    inputSchema: {
+      user_id: z.number().int().describe('The user this flag is about.'),
+      flag_type: z.enum(['referral_abuse', 'suspicious_withdrawal', 'fake_gps', 'multiple_accounts', 'excessive_cancellations', 'ledger_anomaly', 'other'])
+        .describe('What kind of issue this is.'),
+      description: z.string().describe('What was observed, in enough detail for a human reviewer to act on.'),
+      severity: z.enum(['low', 'medium', 'high', 'critical']).optional().describe('Defaults to "medium" if omitted.'),
+      business_reason: z.string().describe('Why this is being flagged — required, shown to the human approving it.'),
+    },
+  },
+  async (args) => {
+    try {
+      return textResult(await callAiOps('/api/ai-ops/finance/propose-flag', {
+        method: 'POST',
+        body: JSON.stringify(args),
+      }));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.registerTool(
+  'ai_ops_read_flagged_runners',
+  {
+    title: 'Read flagged runners',
+    description: 'Lists runners with at least one strike, an active suspension, or a permanent ban — most strikes first.',
+    inputSchema: {},
+  },
+  async () => {
+    try {
+      return textResult(await callAiOps('/api/ai-ops/runners/flagged'));
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.registerTool(
+  'ai_ops_propose_runner_strike',
+  {
+    title: 'Propose a runner strike',
+    description:
+      'Proposes issuing a strike against a runner. Does NOT issue anything — only files a proposal a human ' +
+      'must approve via the desktop app. On approval it runs the exact same strike system the admin dashboard ' +
+      'uses: 1st strike warns, 2nd suspends 7 days, 3rd permanently bans. Never propose a strike you are not ' +
+      'prepared to see escalate to suspension or a ban if this is not their first.',
+    inputSchema: {
+      runner_id: z.number().int().describe('The runner this strike is about.'),
+      reason: z.string().max(500).describe('Short reason for the strike.'),
+      notes: z.string().max(1000).optional().describe('Additional context for the record.'),
+      business_reason: z.string().describe('Why this strike is being proposed — required, shown to the human approving it.'),
+    },
+  },
+  async (args) => {
+    try {
+      return textResult(await callAiOps('/api/ai-ops/runners/propose-strike', {
         method: 'POST',
         body: JSON.stringify(args),
       }));

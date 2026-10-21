@@ -47,10 +47,24 @@ them call ErrandHer's AI-Ops API.
 See `.claude/agents/` for the specific department agents and their scoped
 tool access. Phase 1 has two: `operations-dispatch` (delayed-order
 monitoring, runner availability) and `customer-experience` (open support
-cases, customer messaging). Both can only propose — approval and
-execution happen through the desktop app, never through an agent's own
-tool use. More departments are added only once these are proven out in
-real use, per `03-target-architecture-and-plan.md` in the main repo.
+cases, customer messaging). Phase 2 adds two more: `finance-reconciliation`
+(reconciliation summaries, pending withdrawals, fraud/anomaly flagging)
+and `runner-management` (flagged/suspended/banned runners, strike
+recommendations). All four can only propose — approval and execution
+happen through the desktop app, never through an agent's own tool use.
+More departments are added only once these are proven out in real use,
+per `03-target-architecture-and-plan.md` in the main repo.
+
+**Finance and Runner Management hold a stricter rule than Phase 1's
+departments:** there is no tool, anywhere in this workspace, that
+approves or rejects a withdrawal, or that suspends/bans a runner
+directly. Withdrawal decisions stay in the existing admin dashboard where
+a human sees wallet balance and history together with the decision. A
+runner strike still goes through propose → approve, same as Phase 1 —
+but approval there triggers the existing, escalating strike system
+(warning → 7-day suspension → permanent ban), so it's held to a higher
+bar than a support ticket or a customer notification. See each agent's
+own file for specifics.
 
 ## Two separate credentials — don't conflate them
 
